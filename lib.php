@@ -6,10 +6,6 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Output navigation before the standard page footer.
  *
- * This mirrors the proven insertion mechanism used by the legacy navbuttons
- * block. If the block is enabled for the current course and a course module
- * exists, the plugin attempts to render navigation.
- *
  * @return string
  */
 function block_ibapnav_before_footer(): string {
@@ -30,90 +26,122 @@ function block_ibapnav_render_navigation(): string {
         return '';
     }
 
+    $debug = (bool)get_config('block_ibapnav', 'debug');
+
     if (empty($COURSE) || (int)$COURSE->id <= SITEID) {
-        return '<!-- IBAPNAV: no course -->';
+        return block_ibapnav_debug('no course', $debug);
     }
 
     $settings = $DB->get_record('block_ibapnav', ['course' => $COURSE->id]);
     if (!$settings) {
-        return '<!-- IBAPNAV: block not enabled for course -->';
+        return block_ibapnav_debug('block not enabled for course', $debug);
     }
 
     if (!(int)$settings->enabled) {
-        return '<!-- IBAPNAV: disabled for course -->';
+        return block_ibapnav_debug('disabled for course', $debug);
     }
 
     if (empty($PAGE->cm)) {
-        return '<!-- IBAPNAV: no course module -->';
+        return block_ibapnav_debug('no course module', $debug);
     }
 
     $nav = \block_ibapnav\local\navigation::resolve($COURSE, $PAGE->cm);
     if ($nav === null) {
-        return '<!-- IBAPNAV: could not resolve navigation -->';
+        return block_ibapnav_debug('could not resolve navigation', $debug);
     }
 
     $rendered = true;
+
+    $showcourse = property_exists($settings, 'showcourse') ? (bool)$settings->showcourse : true;
+    $showactivityname = property_exists($settings, 'showactivityname') ? (bool)$settings->showactivityname : true;
+    $showfinish = property_exists($settings, 'showfinish') ? (bool)$settings->showfinish : true;
+    $hometext = !empty($settings->hometext)
+        ? format_string($settings->hometext, true, ['context' => $PAGE->context])
+        : get_string('coursehome', 'block_ibapnav');
 
     $items = [];
     $items[] = block_ibapnav_render_side_button(
         'previous',
         $nav->previous,
         get_string('previous', 'block_ibapnav'),
-        '←'
+        '←',
+        $showactivityname
     );
-
-    $showcourseconfig = get_config('block_ibapnav', 'showcourse');
-    $showcourse = $showcourseconfig === false ? true : (bool)$showcourseconfig;
 
     if ($showcourse) {
         $items[] = html_writer::link(
             $nav->courseurl,
             html_writer::span('⌂', 'ibapnav__icon', ['aria-hidden' => 'true']) .
-                html_writer::span(get_string('coursehome', 'block_ibapnav'), 'ibapnav__label'),
+                html_writer::span($hometext, 'ibapnav__label'),
             [
                 'class' => 'ibapnav__button ibapnav__button--home',
-                'aria-label' => get_string('coursehome', 'block_ibapnav'),
+                'aria-label' => $hometext,
             ]
         );
     } else {
         $items[] = html_writer::span('', 'ibapnav__spacer', ['aria-hidden' => 'true']);
     }
 
-    $items[] = block_ibapnav_render_side_button(
-        'next',
-        $nav->next,
-        get_string('next', 'block_ibapnav'),
-        '→'
+    if ($nav->next !== null) {
+        $items[] = block_ibapnav_render_side_button(
+            'next',
+            $nav->next,
+            get_string('next', 'block_ibapnav'),
+            '→',
+            $showactivityname
+        );
+    } else if ($showfinish) {
+        $items[] = html_writer::link(
+            $nav->courseurl,
+            html_writer::span(get_string('finish', 'block_ibapnav'), 'ibapnav__label') .
+                html_writer::span('✓', 'ibapnav__icon', ['aria-hidden' => 'true']),
+            [
+                'class' => 'ibapnav__button ibapnav__button--finish',
+                'aria-label' => get_string('finish', 'block_ibapnav'),
+            ]
+        );
+    } else {
+        $items[] = html_writer::span('', 'ibapnav__spacer', ['aria-hidden' => 'true']);
+    }
+
+    $html = html_writer::tag(
+        'nav',
+        implode('', $items),
+        [
+            'id' => 'ibapnav',
+            'class' => 'ibapnav',
+            'aria-label' => get_string('navigationaria', 'block_ibapnav'),
+        ]
     );
 
-    return '<!-- IBAPNAV: start -->' .
-        html_writer::tag(
-            'nav',
-            implode('', $items),
-            [
-                'id' => 'ibapnav',
-                'class' => 'ibapnav',
-                'aria-label' => get_string('navigationaria', 'block_ibapnav'),
-            ]
-        ) .
-        '<!-- IBAPNAV: end -->';
+    if ($debug) {
+        return '<!-- IBAPNAV: start -->' . $html . '<!-- IBAPNAV: end -->';
+    }
+
+    return $html;
 }
 
 /**
- * Render a previous/next button or a placeholder when no neighbour exists.
+ * Render a previous/next button or a placeholder.
  *
  * @param string $type previous|next
  * @param object|null $item Navigation item.
  * @param string $label Button label.
  * @param string $arrow Arrow glyph.
+ * @param bool $showname Whether to show the activity name.
  * @return string
  */
-function block_ibapnav_render_side_button(string $type, ?object $item, string $label, string $arrow): string {
+function block_ibapnav_render_side_button(
+    string $type,
+    ?object $item,
+    string $label,
+    string $arrow,
+    bool $showname
+): string {
     if ($item === null) {
         return html_writer::span('', 'ibapnav__spacer', ['aria-hidden' => 'true']);
     }
 
-    $showname = (bool)get_config('block_ibapnav', 'showactivityname');
     $content = '';
 
     if ($type === 'previous') {
@@ -134,4 +162,15 @@ function block_ibapnav_render_side_button(string $type, ?object $item, string $l
         'class' => 'ibapnav__button ibapnav__button--' . $type,
         'aria-label' => $showname ? $label . ': ' . $item->name : $label,
     ]);
+}
+
+/**
+ * Emit debug comments only when debug mode is enabled.
+ *
+ * @param string $message
+ * @param bool $enabled
+ * @return string
+ */
+function block_ibapnav_debug(string $message, bool $enabled): string {
+    return $enabled ? '<!-- IBAPNAV: ' . s($message) . ' -->' : '';
 }
