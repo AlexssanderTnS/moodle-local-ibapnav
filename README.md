@@ -12,6 +12,7 @@ Plugin local para Moodle que adiciona navegação sequencial entre conteúdos do
 - Projetado para funcionar independentemente do tema visual.
 - Não depende de Bootstrap, jQuery, YUI, AMD, componentes reativos ou classes CSS do tema.
 - Usa os hooks oficiais de saída do Moodle para carregar o CSS e renderizar a navegação.
+- A navegação é inserida após a região principal do conteúdo, e não presa ao HTML específico do rodapé de um tema.
 
 ## Como instalar
 
@@ -41,7 +42,7 @@ A navegação aparece apenas nas páginas principais de visualização de ativid
 
 ## CSS e temas
 
-Todo o CSS está isolado sob `#local-ibapnav`, reduzindo conflitos com temas personalizados. O arquivo `styles.css` é carregado explicitamente pelo hook de cabeçalho do Moodle, em vez de depender da implementação do tema.
+Todo o CSS está isolado sob `#local-ibapnav`, reduzindo conflitos com temas personalizados. O arquivo `styles.css` também é carregado explicitamente pelo hook de cabeçalho do Moodle. Os seletores do plugin não dependem de classes Bootstrap ou de nomes internos de qualquer tema.
 
 ## JavaScript
 
