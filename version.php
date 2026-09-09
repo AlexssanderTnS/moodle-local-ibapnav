@@ -9,7 +9,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_ibapnav';
-$plugin->version = 2026090900;
+$plugin->version = 2026090901;
 $plugin->requires = 2024042200; // Moodle 4.4 or later.
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0.0';
+$plugin->release = '1.0.1';
