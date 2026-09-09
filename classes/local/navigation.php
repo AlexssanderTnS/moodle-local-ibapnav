@@ -70,15 +70,7 @@ final class navigation {
      * @return bool
      */
     private static function is_navigable(cm_info $cm): bool {
-        if ($cm->modname === 'label') {
-            return false;
-        }
-
         if (!$cm->uservisible) {
-            return false;
-        }
-
-        if (property_exists($cm, 'deletioninprogress') && $cm->deletioninprogress) {
             return false;
         }
 
