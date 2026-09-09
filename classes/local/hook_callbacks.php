@@ -24,13 +24,14 @@ final class hook_callbacks {
      * @return void
      */
     public static function before_standard_head_html_generation(before_standard_head_html_generation $hook): void {
-        global $CFG;
-
         if (!self::can_prepare()) {
             return;
         }
 
-        $cssurl = new moodle_url('/local/ibapnav/styles.css', ['v' => get_config('local_ibapnav', 'version') ?: '1']);
+        $cssurl = new moodle_url('/local/ibapnav/styles.css', [
+            'v' => (string)(get_config('local_ibapnav', 'version') ?: '1'),
+        ]);
+
         $hook->add_html(html_writer::empty_tag('link', [
             'rel' => 'stylesheet',
             'href' => $cssurl,
@@ -57,10 +58,8 @@ final class hook_callbacks {
             return;
         }
 
-        $showcourse = (bool)get_config('local_ibapnav', 'showcourse');
-        if (get_config('local_ibapnav', 'showcourse') === false) {
-            $showcourse = true;
-        }
+        $showcourseconfig = get_config('local_ibapnav', 'showcourse');
+        $showcourse = $showcourseconfig === false ? true : (bool)$showcourseconfig;
 
         $items = [];
         $items[] = self::render_side_button(
@@ -116,7 +115,9 @@ final class hook_callbacks {
             return false;
         }
 
-        if (CLI_SCRIPT || AJAX_SCRIPT || WS_SERVER) {
+        if ((defined('CLI_SCRIPT') && CLI_SCRIPT) ||
+            (defined('AJAX_SCRIPT') && AJAX_SCRIPT) ||
+            (defined('WS_SERVER') && WS_SERVER)) {
             return false;
         }
 
