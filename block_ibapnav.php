@@ -11,12 +11,14 @@ class block_ibapnav extends block_base {
         $this->title = get_string('pluginname', 'block_ibapnav');
     }
 
+    /**
+     * Keep the same broad course availability used by the legacy block.
+     */
     public function applicable_formats(): array {
         return [
-            'course-view' => true,
-            'mod' => true,
+            'course' => true,
+            'course-category' => false,
             'site' => false,
-            'my' => false,
         ];
     }
 
@@ -24,25 +26,33 @@ class block_ibapnav extends block_base {
         return true;
     }
 
+    /**
+     * The visible block is only an administrator/teacher activation marker.
+     * Students do not need to see a sidebar/card block; navigation is injected
+     * at the bottom of activity pages by block_ibapnav_before_footer().
+     */
     public function get_content() {
+        if (!has_capability('moodle/course:manageactivities', $this->context)) {
+            return null;
+        }
+
         if ($this->content !== null) {
             return $this->content;
         }
 
         $this->content = new stdClass();
         $this->content->footer = '';
-        $this->content->text = '';
-
-        if (has_capability('moodle/course:manageactivities', $this->context)) {
-            $this->content->text = html_writer::div(
-                get_string('blockenabledinfo', 'block_ibapnav'),
-                'ibapnav-admin-status'
-            );
-        }
+        $this->content->text = html_writer::div(
+            get_string('blockenabledinfo', 'block_ibapnav'),
+            'ibapnav-admin-status'
+        );
 
         return $this->content;
     }
 
+    /**
+     * Adding the block explicitly enables navigation for that course.
+     */
     public function instance_create() {
         global $DB;
 
@@ -55,13 +65,12 @@ class block_ibapnav extends block_base {
         $settings = $DB->get_record('block_ibapnav', ['course' => $courseid]);
 
         if (!$settings) {
-            $record = (object)[
+            $DB->insert_record('block_ibapnav', (object)[
                 'course' => $courseid,
                 'enabled' => 1,
                 'timecreated' => time(),
                 'timemodified' => time(),
-            ];
-            $DB->insert_record('block_ibapnav', $record);
+            ]);
             return;
         }
 
@@ -72,6 +81,9 @@ class block_ibapnav extends block_base {
         }
     }
 
+    /**
+     * Removing the block disables navigation but preserves the course record.
+     */
     public function instance_delete() {
         global $DB;
 
