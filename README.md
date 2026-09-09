@@ -1,49 +1,70 @@
-# Moodle Local IBAP Navigation
+# Moodle Block IBAP Navigation
 
-Plugin local para Moodle que adiciona navegação sequencial entre conteúdos do curso com três controles:
+Plugin de bloco para Moodle que adiciona navegação sequencial moderna entre conteúdos do curso:
 
 - **Voltar** — atividade/recurso anterior visível ao usuário.
 - **Página inicial da jornada** — retorna para a página principal do curso.
 - **Continuar** — próxima atividade/recurso visível ao usuário.
 
+## Arquitetura 2.0
+
+A versão 2.0 foi convertida de `local_ibapnav` para **`block_ibapnav`** para usar o mesmo mecanismo de ativação e saída do plugin legado Navigation buttons.
+
+### Ativação explícita por curso
+
+O plugin só é habilitado quando o bloco **Navegação de conteúdo IBAP** é adicionado a um curso. Ao adicionar o bloco, `instance_create()` cria ou ativa um registro na tabela `block_ibapnav` com `enabled = 1`. Ao remover o bloco, `instance_delete()` desativa a navegação daquele curso.
+
+### Renderização forçada
+
+A navegação é gerada por `block_ibapnav_before_footer()`, o mesmo padrão utilizado pelo plugin legado que já funciona no Moodle. Se o curso estiver habilitado e `$PAGE->cm` existir, o plugin tenta desenhar a navegação. Não há filtros por tema, DOM, URL ou `pagetype`.
+
+Comentários HTML de diagnóstico são incluídos quando a navegação não pode ser exibida, por exemplo:
+
+- `IBAPNAV: block not enabled for course`
+- `IBAPNAV: no course module`
+- `IBAPNAV: could not resolve navigation`
+
+### Sequência anterior/próximo
+
+A resolução percorre diretamente `get_fast_modinfo($COURSE)->cms`, como o plugin legado. Rótulos e módulos invisíveis ao usuário são ignorados. O módulo anterior visível é guardado até encontrar o atual; o primeiro módulo visível seguinte vira o botão Continuar.
+
 ## Compatibilidade
 
 - Moodle **4.4 ou superior**.
-- Projetado para funcionar independentemente do tema visual.
-- Não depende de Bootstrap, jQuery, YUI, AMD, componentes reativos ou classes CSS do tema.
-- Usa os hooks oficiais de saída do Moodle para carregar o CSS e renderizar a navegação.
-- A navegação é inserida após a região principal do conteúdo, e não presa ao HTML específico do rodapé de um tema.
+- Não depende de Bootstrap, jQuery, YUI, AMD ou componentes reativos.
+- Não depende do DOM de um tema específico.
+- CSS isolado em `#ibapnav`.
+- Sem JavaScript.
 
-## Como instalar
+## Instalação
 
-1. Baixe o repositório como ZIP.
-2. Garanta que a pasta final se chame `ibapnav`.
-3. Coloque a pasta em `local/ibapnav` no Moodle ou instale o ZIP pelo instalador de plugins.
-4. Acesse **Administração do site > Notificações** para concluir a instalação.
-5. Limpe os caches do Moodle após instalar ou atualizar.
+**Importante:** esta versão é um plugin do tipo `block`, não `local`.
 
-## Configurações
+A pasta final deve ser:
 
-Em **Administração do site > Plugins > Plugins locais > Navegação de conteúdo IBAP**:
+```text
+blocks/ibapnav/
+```
 
-- mostrar ou ocultar o botão central da jornada;
-- mostrar ou ocultar o nome da atividade anterior/próxima.
+Ela deve conter diretamente `version.php`, `block_ibapnav.php`, `lib.php`, `styles.css`, `db/`, `classes/` e `lang/`.
 
-## Regras de navegação
+Se uma versão antiga de `local_ibapnav` estiver instalada em `local/ibapnav`, desinstale/remova essa versão antes de instalar a 2.0.
 
-O plugin usa a ordem real das atividades no curso e ignora automaticamente:
+Depois da instalação:
 
-- rótulos (`label`);
-- atividades sem página de visualização;
-- atividades sem URL;
-- atividades que o usuário não pode visualizar.
+1. Acesse o curso.
+2. Ative o modo de edição.
+3. Adicione o bloco **Navegação de conteúdo IBAP**.
+4. Abra uma atividade/recurso do curso.
+5. Os botões devem aparecer no final da página.
 
-A navegação aparece apenas nas páginas principais de visualização de atividades e recursos (`mod-*-view`). Ela não aparece em tentativas de quiz, edição, correção, relatórios ou telas administrativas.
+## Configurações globais
 
-## CSS e temas
+Nas configurações do bloco é possível:
 
-Todo o CSS está isolado sob `#local-ibapnav`, reduzindo conflitos com temas personalizados. O arquivo `styles.css` também é carregado explicitamente pelo hook de cabeçalho do Moodle. Os seletores do plugin não dependem de classes Bootstrap ou de nomes internos de qualquer tema.
+- mostrar/ocultar o botão central da página do curso;
+- mostrar/ocultar o nome da atividade anterior/próxima.
 
-## JavaScript
+## Privacidade
 
-Este plugin não usa JavaScript.
+O plugin não armazena dados pessoais. A tabela própria contém apenas o ID do curso, estado de ativação e timestamps.
