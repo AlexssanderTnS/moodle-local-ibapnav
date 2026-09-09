@@ -10,8 +10,8 @@ $callbacks = [
         'priority' => 100,
     ],
     [
-        'hook' => \core\hook\output\before_standard_footer_html_generation::class,
-        'callback' => [\local_ibapnav\local\hook_callbacks::class, 'before_standard_footer_html_generation'],
+        'hook' => \core\hook\output\after_standard_main_region_html_generation::class,
+        'callback' => [\local_ibapnav\local\hook_callbacks::class, 'after_standard_main_region_html_generation'],
         'priority' => 100,
     ],
 ];
