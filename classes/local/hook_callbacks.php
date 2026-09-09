@@ -5,7 +5,7 @@ namespace local_ibapnav\local;
 
 defined('MOODLE_INTERNAL') || die();
 
-use core\hook\output\before_standard_footer_html_generation;
+use core\hook\output\after_standard_main_region_html_generation;
 use core\hook\output\before_standard_head_html_generation;
 use html_writer;
 use moodle_url;
@@ -14,7 +14,7 @@ use moodle_url;
  * Hook callbacks for the IBAP course navigation.
  */
 final class hook_callbacks {
-    /** @var bool Prevent duplicate rendering when a theme invokes the footer more than once. */
+    /** @var bool Prevent duplicate rendering if a theme requests the main region more than once. */
     private static bool $rendered = false;
 
     /**
@@ -39,12 +39,12 @@ final class hook_callbacks {
     }
 
     /**
-     * Add navigation immediately before Moodle's standard footer.
+     * Add navigation immediately after Moodle's standard main content region.
      *
-     * @param before_standard_footer_html_generation $hook Hook instance.
+     * @param after_standard_main_region_html_generation $hook Hook instance.
      * @return void
      */
-    public static function before_standard_footer_html_generation(before_standard_footer_html_generation $hook): void {
+    public static function after_standard_main_region_html_generation(after_standard_main_region_html_generation $hook): void {
         global $PAGE;
 
         if (self::$rendered || !self::can_render()) {
