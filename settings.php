@@ -3,9 +3,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-if ($hassiteconfig) {
-    $settings = new admin_settingpage('block_ibapnav', get_string('pluginname', 'block_ibapnav'));
-
+if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configcheckbox(
         'block_ibapnav/showcourse',
         get_string('showcourse', 'block_ibapnav'),
