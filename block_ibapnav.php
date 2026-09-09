@@ -42,9 +42,6 @@ class block_ibapnav extends block_base {
         return $this->content;
     }
 
-    /**
-     * Adding the block explicitly enables navigation for that course.
-     */
     public function instance_create() {
         global $DB;
 
@@ -75,10 +72,6 @@ class block_ibapnav extends block_base {
         $DB->update_record('block_ibapnav', $settings);
     }
 
-    /**
-     * Save the normal block configuration and mirror the useful UX options
-     * into the per-course table used by the footer callback.
-     */
     public function instance_config_save($data, $nolongerused = false) {
         global $DB;
 
@@ -95,19 +88,27 @@ class block_ibapnav extends block_base {
             return $result;
         }
 
-        $settings->showcourse = empty($data->showcourse) ? 0 : 1;
-        $settings->showactivityname = empty($data->showactivityname) ? 0 : 1;
-        $settings->showfinish = empty($data->showfinish) ? 0 : 1;
-        $settings->hometext = isset($data->hometext) ? trim((string)$data->hometext) : '';
+        $value = static function($data, string $name, $default = null) {
+            if (property_exists($data, $name)) {
+                return $data->{$name};
+            }
+            $configname = 'config_' . $name;
+            if (property_exists($data, $configname)) {
+                return $data->{$configname};
+            }
+            return $default;
+        };
+
+        $settings->showcourse = empty($value($data, 'showcourse', 0)) ? 0 : 1;
+        $settings->showactivityname = empty($value($data, 'showactivityname', 0)) ? 0 : 1;
+        $settings->showfinish = empty($value($data, 'showfinish', 0)) ? 0 : 1;
+        $settings->hometext = trim((string)$value($data, 'hometext', ''));
         $settings->timemodified = time();
         $DB->update_record('block_ibapnav', $settings);
 
         return $result;
     }
 
-    /**
-     * Removing the block disables navigation but preserves the course record.
-     */
     public function instance_delete() {
         global $DB;
 
