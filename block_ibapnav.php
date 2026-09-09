@@ -11,9 +11,6 @@ class block_ibapnav extends block_base {
         $this->title = get_string('pluginname', 'block_ibapnav');
     }
 
-    /**
-     * Keep the same broad course availability used by the legacy block.
-     */
     public function applicable_formats(): array {
         return [
             'course' => true,
@@ -26,11 +23,6 @@ class block_ibapnav extends block_base {
         return true;
     }
 
-    /**
-     * The visible block is only an administrator/teacher activation marker.
-     * Students do not need to see a sidebar/card block; navigation is injected
-     * at the bottom of activity pages by block_ibapnav_before_footer().
-     */
     public function get_content() {
         if (!has_capability('moodle/course:manageactivities', $this->context)) {
             return null;
@@ -68,17 +60,49 @@ class block_ibapnav extends block_base {
             $DB->insert_record('block_ibapnav', (object)[
                 'course' => $courseid,
                 'enabled' => 1,
+                'showcourse' => 1,
+                'showactivityname' => 1,
+                'showfinish' => 1,
+                'hometext' => '',
                 'timecreated' => time(),
                 'timemodified' => time(),
             ]);
             return;
         }
 
-        if (!(int)$settings->enabled) {
-            $settings->enabled = 1;
-            $settings->timemodified = time();
-            $DB->update_record('block_ibapnav', $settings);
+        $settings->enabled = 1;
+        $settings->timemodified = time();
+        $DB->update_record('block_ibapnav', $settings);
+    }
+
+    /**
+     * Save the normal block configuration and mirror the useful UX options
+     * into the per-course table used by the footer callback.
+     */
+    public function instance_config_save($data, $nolongerused = false) {
+        global $DB;
+
+        $result = parent::instance_config_save($data, $nolongerused);
+
+        $coursecontext = $this->context->get_course_context(false);
+        if (!$coursecontext) {
+            return $result;
         }
+
+        $courseid = (int)$coursecontext->instanceid;
+        $settings = $DB->get_record('block_ibapnav', ['course' => $courseid]);
+        if (!$settings) {
+            return $result;
+        }
+
+        $settings->showcourse = empty($data->showcourse) ? 0 : 1;
+        $settings->showactivityname = empty($data->showactivityname) ? 0 : 1;
+        $settings->showfinish = empty($data->showfinish) ? 0 : 1;
+        $settings->hometext = isset($data->hometext) ? trim((string)$data->hometext) : '';
+        $settings->timemodified = time();
+        $DB->update_record('block_ibapnav', $settings);
+
+        return $result;
     }
 
     /**
