@@ -102,7 +102,7 @@ final class navigation {
     private static function item(cm_info $cm): stdClass {
         $item = new stdClass();
         $item->url = $cm->url;
-        $item->name = format_string($cm->name, true, ['context' => $cm->context]);
+        $item->name = $cm->get_formatted_name();
         return $item;
     }
 }
