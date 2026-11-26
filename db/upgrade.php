@@ -6,7 +6,7 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Upgrade steps for block_ibapnav.
  *
- * @param int $oldversion
+ * @param int $oldversion Installed plugin version.
  * @return bool
  */
 function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
@@ -15,23 +15,10 @@ function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
     $dbman = $DB->get_manager();
     $table = new xmldb_table('block_ibapnav');
 
-    // Recover safely if a previous installation registered the plugin but the
-    // plugin table was never created.
+    // Recover installations where plugin metadata was registered but the
+    // custom table was never created (for example after an interrupted upgrade).
     if (!$dbman->table_exists($table)) {
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('course', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('enabled', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('showcourse', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('showactivityname', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('showfinish', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('hometext', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, '');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-        $table->add_key('course_fk', XMLDB_KEY_FOREIGN, ['course'], 'course', ['id']);
-
-        $dbman->create_table($table);
+        $dbman->install_one_table_from_xmldb_file(__DIR__ . '/install.xml', 'block_ibapnav');
     }
 
     if ($oldversion < 2026090904) {
@@ -51,18 +38,37 @@ function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
         upgrade_block_savepoint(true, 2026090904, 'ibapnav');
     }
 
-    if ($oldversion < 2026112601) {
-        upgrade_block_savepoint(true, 2026112601, 'ibapnav');
-    }
+    if ($oldversion < 2026112604) {
+        // Remove accidental duplicate rows from earlier versions. Keep the
+        // most recently modified row so the latest course settings survive.
+        $duplicates = $DB->get_records_sql(
+            'SELECT course, COUNT(1) AS recordcount
+               FROM {block_ibapnav}
+           GROUP BY course
+             HAVING COUNT(1) > 1'
+        );
 
-    if ($oldversion < 2026112602) {
-        upgrade_block_savepoint(true, 2026112602, 'ibapnav');
-    }
+        foreach ($duplicates as $duplicate) {
+            $records = $DB->get_records(
+                'block_ibapnav',
+                ['course' => $duplicate->course],
+                'timemodified DESC, id DESC',
+                'id'
+            );
 
-    if ($oldversion < 2026112603) {
-        // Remove the redundant unique index definition from the XMLDB model.
-        // The plugin already prevents duplicate per-course records in code.
-        upgrade_block_savepoint(true, 2026112603, 'ibapnav');
+            if (count($records) < 2) {
+                continue;
+            }
+
+            $keepid = (int) array_key_first($records);
+            $DB->delete_records_select(
+                'block_ibapnav',
+                'course = :course AND id <> :keepid',
+                ['course' => $duplicate->course, 'keepid' => $keepid]
+            );
+        }
+
+        upgrade_block_savepoint(true, 2026112604, 'ibapnav');
     }
 
     return true;
