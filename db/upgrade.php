@@ -30,7 +30,6 @@ function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
 
         $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
         $table->add_key('course_fk', XMLDB_KEY_FOREIGN, ['course'], 'course', ['id']);
-        $table->add_index('course_unique', XMLDB_INDEX_UNIQUE, ['course']);
 
         $dbman->create_table($table);
     }
@@ -57,9 +56,13 @@ function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
     }
 
     if ($oldversion < 2026112602) {
-        // Version 2.2.1 introduces the new output hook and repairs missing
-        // plugin tables from interrupted/legacy installations.
         upgrade_block_savepoint(true, 2026112602, 'ibapnav');
+    }
+
+    if ($oldversion < 2026112603) {
+        // Remove the redundant unique index definition from the XMLDB model.
+        // The plugin already prevents duplicate per-course records in code.
+        upgrade_block_savepoint(true, 2026112603, 'ibapnav');
     }
 
     return true;
