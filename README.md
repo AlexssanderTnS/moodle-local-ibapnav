@@ -11,7 +11,7 @@ Plugin de bloco para Moodle que adiciona uma navegação em formato de pílula n
 
 **2.3.0** — arquitetura revisada para Moodle 4.4+.
 
-A renderização usa o Hook API oficial do Moodle:
+A renderização usa a Hook API oficial do Moodle:
 
 `core\hook\output\before_footer_html_generation`
 
@@ -103,7 +103,6 @@ Ela deve conter diretamente:
 ```text
 block_ibapnav.php
 version.php
-lib.php
 styles.css
 classes/
 db/
