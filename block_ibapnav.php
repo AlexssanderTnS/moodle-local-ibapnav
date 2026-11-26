@@ -107,10 +107,7 @@ class block_ibapnav extends block_base {
      * @return bool
      */
     public function instance_config_save($data, $nolongerused = false) {
-        $result = parent::instance_config_save($data, $nolongerused);
-        if (!$result) {
-            return false;
-        }
+        parent::instance_config_save($data, $nolongerused);
 
         $coursecontext = $this->context->get_course_context(false);
         if (!$coursecontext) {
