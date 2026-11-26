@@ -10,14 +10,14 @@ defined('MOODLE_INTERNAL') || die();
  */
 final class hook_callbacks {
     /**
-     * Add the navigation pill before the footer.
+     * Add the navigation pill before the standard footer.
      *
-     * @param \core\hook\output\before_footer_html_generation $hook
+     * @param \core\hook\output\before_footer_html_generation $hook Footer hook.
      * @return void
      */
     public static function before_footer_html_generation(
         \core\hook\output\before_footer_html_generation $hook
     ): void {
-        $hook->add_html(\block_ibapnav_render_navigation());
+        $hook->add_html(renderer::render());
     }
 }
