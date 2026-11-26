@@ -14,9 +14,9 @@ A versão 2.0 foi convertida de `local_ibapnav` para **`block_ibapnav`** para us
 
 O plugin só é habilitado quando o bloco **Navegação de conteúdo IBAP** é adicionado a um curso. Ao adicionar o bloco, `instance_create()` cria ou ativa um registro na tabela `block_ibapnav` com `enabled = 1`. Ao remover o bloco, `instance_delete()` desativa a navegação daquele curso.
 
-### Renderização forçada
+### Renderização contextual
 
-A navegação é gerada por `block_ibapnav_before_footer()`, o mesmo padrão utilizado pelo plugin legado que já funciona no Moodle. Se o curso estiver habilitado e `$PAGE->cm` existir, o plugin tenta desenhar a navegação. Não há filtros por tema, DOM, URL ou `pagetype`.
+A navegação é gerada por `block_ibapnav_before_footer()`, o mesmo padrão utilizado pelo plugin legado que já funciona no Moodle. A partir da versão 2.2.0, a pílula aparece apenas na página principal da atividade (`/mod/{modname}/view.php`) e é ocultada em telas internas que já possuem navegação própria, como tentativas e revisões de quiz, players SCORM e fluxos equivalentes. Em atividades do tipo Lesson, páginas internas identificadas por `pageid` também não exibem a pílula.
 
 Comentários HTML de diagnóstico são incluídos quando a navegação não pode ser exibida, por exemplo:
 
