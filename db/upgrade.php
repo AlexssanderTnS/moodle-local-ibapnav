@@ -33,5 +33,11 @@ function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
         upgrade_block_savepoint(true, 2026090904, 'ibapnav');
     }
 
+    if ($oldversion < 2026112601) {
+        // Version 2.2.0 only changes runtime rendering logic.
+        // No database schema changes are required.
+        upgrade_block_savepoint(true, 2026112601, 'ibapnav');
+    }
+
     return true;
 }
