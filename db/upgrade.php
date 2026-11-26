@@ -1,11 +1,31 @@
 <?php
 // This file is part of Moodle - http://moodle.org/
-
-defined('MOODLE_INTERNAL') || die();
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Upgrade steps for block_ibapnav.
+ * Upgrade script for the IBAP navigation block.
  *
+ * @package    block_ibapnav
+ * @copyright  2026 IBAP-RJ
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/**
+ * Upgrade block_ibapnav.
+ *
+ * @package block_ibapnav
  * @param int $oldversion Installed plugin version.
  * @return bool
  */
@@ -16,7 +36,7 @@ function xmldb_block_ibapnav_upgrade(int $oldversion): bool {
     $table = new xmldb_table('block_ibapnav');
 
     // Recover installations where plugin metadata was registered but the
-    // custom table was never created (for example after an interrupted upgrade).
+    // custom table was never created, for example after an interrupted upgrade.
     if (!$dbman->table_exists($table)) {
         $dbman->install_one_table_from_xmldb_file(__DIR__ . '/install.xml', 'block_ibapnav');
     }
