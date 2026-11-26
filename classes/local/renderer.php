@@ -161,7 +161,16 @@ final class renderer {
             return false;
         }
 
-        if (!self::is_canonical_view_path($PAGE->url->get_path(), $modname)) {
+        $path = $PAGE->url->get_path();
+
+        // Quiz review is a legitimate end-of-activity screen after the attempt
+        // has been submitted. Allow it only for a finished attempt. attempt.php
+        // and summary.php remain excluded.
+        if ($modname === 'quiz' && self::is_module_script($path, 'quiz', 'review.php')) {
+            return self::quiz_review_is_finished();
+        }
+
+        if (!self::is_canonical_view_path($path, $modname)) {
             return false;
         }
 
@@ -188,6 +197,32 @@ final class renderer {
     }
 
     /**
+     * Check whether the current quiz review belongs to a finished attempt.
+     *
+     * @return bool
+     */
+    private static function quiz_review_is_finished(): bool {
+        global $DB, $PAGE, $USER;
+
+        $attemptid = optional_param('attempt', 0, PARAM_INT);
+        if ($attemptid <= 0) {
+            return false;
+        }
+
+        $conditions = [
+            'id' => $attemptid,
+            'quiz' => $PAGE->cm->instance,
+            'state' => 'finished',
+        ];
+
+        if (!has_capability('moodle/course:manageactivities', $PAGE->context)) {
+            $conditions['userid'] = $USER->id;
+        }
+
+        return $DB->record_exists('quiz_attempts', $conditions);
+    }
+
+    /**
      * Check whether the current learner has completed at least one quiz attempt.
      *
      * Teachers and managers retain the navigation for authoring/testing.
@@ -209,16 +244,17 @@ final class renderer {
     }
 
     /**
-     * Check whether a URL path ends in /mod/{modname}/view.php.
+     * Check whether a URL path ends in a specific module script.
      *
      * Comparing path segments instead of an absolute path keeps this working
      * when Moodle is installed in a subdirectory.
      *
      * @param string $path URL path.
      * @param string $modname Module component name without the mod_ prefix.
+     * @param string $script Script filename.
      * @return bool
      */
-    private static function is_canonical_view_path(string $path, string $modname): bool {
+    private static function is_module_script(string $path, string $modname, string $script): bool {
         $segments = array_values(array_filter(explode('/', trim($path, '/')), 'strlen'));
         $count = count($segments);
 
@@ -228,7 +264,18 @@ final class renderer {
 
         return $segments[$count - 3] === 'mod'
             && $segments[$count - 2] === $modname
-            && $segments[$count - 1] === 'view.php';
+            && $segments[$count - 1] === $script;
+    }
+
+    /**
+     * Check whether a URL path is the module's canonical view.php page.
+     *
+     * @param string $path URL path.
+     * @param string $modname Module component name without the mod_ prefix.
+     * @return bool
+     */
+    private static function is_canonical_view_path(string $path, string $modname): bool {
+        return self::is_module_script($path, $modname, 'view.php');
     }
 
     /**
