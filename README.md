@@ -1,44 +1,96 @@
 # Moodle Block IBAP Navigation
 
-Plugin de bloco para Moodle que adiciona navegação sequencial moderna entre conteúdos do curso:
+Plugin de bloco para Moodle que adiciona uma navegação em formato de pílula no final dos conteúdos do curso:
 
 - **Voltar** — atividade/recurso anterior visível ao usuário.
 - **Página inicial da jornada** — retorna para a página principal do curso.
 - **Continuar** — próxima atividade/recurso visível ao usuário.
+- **Concluir jornada** — aparece quando não existe próximo conteúdo.
 
-## Arquitetura 2.0
+## Versão atual
 
-A versão 2.0 foi convertida de `local_ibapnav` para **`block_ibapnav`** para usar o mesmo mecanismo de ativação e saída do plugin legado Navigation buttons.
+**2.3.0** — arquitetura revisada para Moodle 4.4+.
 
-### Ativação explícita por curso
+A renderização usa o Hook API oficial do Moodle:
 
-O plugin só é habilitado quando o bloco **Navegação de conteúdo IBAP** é adicionado a um curso. Ao adicionar o bloco, `instance_create()` cria ou ativa um registro na tabela `block_ibapnav` com `enabled = 1`. Ao remover o bloco, `instance_delete()` desativa a navegação daquele curso.
+`core\hook\output\before_footer_html_generation`
 
-### Renderização contextual
+Não existe mais callback legado `before_footer`, e o hook não depende de funções globais em `lib.php`.
 
-A navegação é gerada por `block_ibapnav_before_footer()`, o mesmo padrão utilizado pelo plugin legado que já funciona no Moodle. A partir da versão 2.2.0, a pílula aparece apenas na página principal da atividade (`/mod/{modname}/view.php`) e é ocultada em telas internas que já possuem navegação própria, como tentativas e revisões de quiz, players SCORM e fluxos equivalentes. Em atividades do tipo Lesson, páginas internas identificadas por `pageid` também não exibem a pílula.
+## Ativação por curso
 
-Comentários HTML de diagnóstico são incluídos quando a navegação não pode ser exibida, por exemplo:
+O plugin é habilitado quando o bloco **Navegação de conteúdo IBAP** é adicionado ao curso.
 
-- `IBAPNAV: block not enabled for course`
-- `IBAPNAV: no course module`
-- `IBAPNAV: could not resolve navigation`
+- Apenas uma instância do bloco é permitida por curso.
+- Ao adicionar o bloco, o curso é ativado na tabela `block_ibapnav`.
+- Ao remover o bloco, a navegação é desativada para aquele curso.
+- As preferências do bloco continuam configuráveis por curso.
 
-### Sequência anterior/próximo
+O bloco visual de administração é mostrado apenas para usuários com permissão de gerenciar atividades. A pílula de navegação é inserida separadamente pelo hook de saída.
 
-A resolução percorre diretamente `get_fast_modinfo($COURSE)->cms`, como o plugin legado. Rótulos e módulos invisíveis ao usuário são ignorados. O módulo anterior visível é guardado até encontrar o atual; o primeiro módulo visível seguinte vira o botão Continuar.
+## Renderização contextual
+
+O plugin não tenta substituir a navegação interna das atividades.
+
+A pílula só é considerada em páginas canônicas do tipo:
+
+```text
+/mod/{modname}/view.php
+```
+
+Isso evita conflito com páginas internas como:
+
+- tentativas, resumo e revisão de **Quiz**;
+- player de **SCORM**;
+- telas internas de **Feedback** e módulos equivalentes;
+- páginas internas de **Lesson**;
+- fluxos de envio/edição de **Assignment**.
+
+### Quiz
+
+Para estudantes, a pílula não aparece antes da primeira tentativa concluída.
+
+Ela passa a aparecer na página principal do Quiz depois que existe ao menos uma tentativa com estado `finished`. Professores e gerentes continuam vendo a navegação na página principal para fins de edição e teste.
+
+### H5P
+
+O H5P executa parte da navegação dentro do próprio `view.php` via JavaScript. A versão 2.3.0 não interfere no player H5P, mas também não tenta detectar dinamicamente o último slide/tela de todos os tipos de conteúdo H5P. Esse caso deve ser testado separadamente caso uma atividade H5P específica use setas próprias.
+
+## Ordem anterior/próximo
+
+A sequência é calculada usando as seções reais retornadas pelo Moodle por `get_fast_modinfo()->get_sections()`.
+
+O plugin:
+
+- respeita a ordem das atividades no curso;
+- ignora rótulos;
+- ignora módulos invisíveis ao usuário;
+- ignora módulos que não fornecem uma URL de visualização válida;
+- não inventa URLs `/view.php` para plugins que não possuem uma.
+
+## Banco de dados e atualização
+
+A versão 2.3.0 inclui recuperação para instalações interrompidas:
+
+- se a tabela `block_ibapnav` estiver ausente durante upgrade, ela é recriada a partir de `db/install.xml`;
+- definições XMLDB redundantes foram removidas;
+- registros duplicados antigos por curso são consolidados durante o upgrade;
+- chamadas de renderização não consultam a tabela enquanto instalação/upgrade estiver em andamento.
+
+A tabela armazena apenas configurações por curso, sem dados pessoais de alunos.
 
 ## Compatibilidade
 
 - Moodle **4.4 ou superior**.
-- Não depende de Bootstrap, jQuery, YUI, AMD ou componentes reativos.
-- Não depende do DOM de um tema específico.
+- PHP compatível com a versão do Moodle instalada.
+- Sem dependência de Bootstrap, jQuery ou YUI.
+- Sem JavaScript próprio.
 - CSS isolado em `#ibapnav`.
-- Sem JavaScript.
+- Compatível com Moodle instalado na raiz ou em subdiretório.
 
 ## Instalação
 
-**Importante:** esta versão é um plugin do tipo `block`, não `local`.
+Este é um plugin do tipo **block**.
 
 A pasta final deve ser:
 
@@ -46,25 +98,62 @@ A pasta final deve ser:
 blocks/ibapnav/
 ```
 
-Ela deve conter diretamente `version.php`, `block_ibapnav.php`, `lib.php`, `styles.css`, `db/`, `classes/` e `lang/`.
+Ela deve conter diretamente:
 
-Se uma versão antiga de `local_ibapnav` estiver instalada em `local/ibapnav`, desinstale/remova essa versão antes de instalar a 2.0.
+```text
+block_ibapnav.php
+version.php
+lib.php
+styles.css
+classes/
+db/
+lang/
+```
 
-Depois da instalação:
+Se ainda existir uma versão antiga em:
 
-1. Acesse o curso.
-2. Ative o modo de edição.
-3. Adicione o bloco **Navegação de conteúdo IBAP**.
-4. Abra uma atividade/recurso do curso.
-5. Os botões devem aparecer no final da página.
+```text
+local/ibapnav/
+```
 
-## Configurações globais
+desinstale/remova essa versão antes de usar o bloco atual.
 
-Nas configurações do bloco é possível:
+### Atualização por ZIP
 
-- mostrar/ocultar o botão central da página do curso;
-- mostrar/ocultar o nome da atividade anterior/próxima.
+1. Baixe o ZIP da branch `main`.
+2. No instalador do Moodle, escolha **Tipo de plugin: Bloco (block)**.
+3. Se o Moodle solicitar o nome da pasta raiz, use `ibapnav`.
+4. Execute a atualização do banco.
+5. Limpe os caches do Moodle.
+6. Em um curso, ative o modo de edição e adicione **Navegação de conteúdo IBAP**.
+
+## Teste recomendado após atualização
+
+Valide ao menos estes cenários com uma conta de estudante:
+
+1. Recurso Página/Arquivo: pílula visível no final.
+2. Quiz antes de responder: pílula oculta.
+3. Quiz durante tentativa: pílula oculta.
+4. Quiz após finalizar e voltar à página principal: pílula visível.
+5. Lesson em página interna: pílula oculta.
+6. SCORM dentro do player: pílula oculta.
+7. Última atividade do curso: botão **Concluir jornada**.
+8. Curso sem o bloco IBAP: nenhuma pílula.
+
+## Diagnóstico
+
+Em **Administração do site → Plugins → Blocos → Navegação de conteúdo IBAP**, o modo de diagnóstico pode ser habilitado temporariamente.
+
+Quando ativo, o plugin adiciona comentários HTML como:
+
+```text
+IBAPNAV: block not enabled for course
+IBAPNAV: hidden on internal activity page
+IBAPNAV: settings table not available
+```
+
+Mantenha o modo de diagnóstico desligado em produção.
 
 ## Privacidade
 
-O plugin não armazena dados pessoais. A tabela própria contém apenas o ID do curso, estado de ativação e timestamps.
+O plugin não armazena dados pessoais. A tabela própria contém apenas o ID do curso, preferências de interface, estado de ativação e timestamps.
