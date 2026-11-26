@@ -10,8 +10,7 @@ use moodle_url;
 use stdClass;
 
 /**
- * Resolves previous and next content by traversing get_fast_modinfo()->cms
- * directly, mirroring the proven legacy navigation algorithm.
+ * Resolves previous and next course content in the visible course sequence.
  */
 final class navigation {
     /**
@@ -28,24 +27,28 @@ final class navigation {
         $next = null;
         $foundcurrent = false;
 
-        foreach ($modinfo->cms as $cm) {
-            if (!self::is_navigable($cm)) {
-                continue;
+        // get_sections() contains course-module ids in the same sequence used
+        // by course sections, so navigation follows the actual course order.
+        foreach ($modinfo->get_sections() as $cmids) {
+            foreach ($cmids as $cmid) {
+                $cm = $modinfo->get_cm($cmid);
+
+                if (!self::is_navigable($cm)) {
+                    continue;
+                }
+
+                if ($foundcurrent) {
+                    $next = self::item($cm);
+                    break 2;
+                }
+
+                if ((int) $cm->id === (int) $currentcm->id) {
+                    $foundcurrent = true;
+                    continue;
+                }
+
+                $previous = self::item($cm);
             }
-
-            $item = self::item($cm);
-
-            if ($foundcurrent) {
-                $next = $item;
-                break;
-            }
-
-            if ((int)$cm->id === (int)$currentcm->id) {
-                $foundcurrent = true;
-                continue;
-            }
-
-            $previous = $item;
         }
 
         if (!$foundcurrent) {
@@ -63,10 +66,6 @@ final class navigation {
     /**
      * Decide whether a course module participates in navigation.
      *
-     * The filter is deliberately permissive: skip only labels, invisible
-     * modules and items without a usable view URL. This keeps the plugin from
-     * hiding itself because of theme/page-type assumptions.
-     *
      * @param cm_info $cm Course module.
      * @return bool
      */
@@ -79,13 +78,9 @@ final class navigation {
             return false;
         }
 
-        if (!empty($cm->url)) {
-            return true;
-        }
-
-        // Last-resort compatibility with modules that expose a normal
-        // /mod/{name}/view.php endpoint but do not populate cm_info->url.
-        return !empty($cm->modname) && !empty($cm->id);
+        // A null URL normally means the module has no direct view page. Do not
+        // invent a view.php URL because custom/core modules may not expose one.
+        return !empty($cm->url);
     }
 
     /**
@@ -96,14 +91,9 @@ final class navigation {
      */
     private static function item(cm_info $cm): stdClass {
         $item = new stdClass();
-
-        if (!empty($cm->url)) {
-            $item->url = $cm->url;
-        } else {
-            $item->url = new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]);
-        }
-
+        $item->url = $cm->url;
         $item->name = $cm->get_formatted_name();
+
         return $item;
     }
 }
