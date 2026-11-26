@@ -33,6 +33,6 @@ final class hook_callbacks {
     public static function before_footer_html_generation(
         \core\hook\output\before_footer_html_generation $hook
     ): void {
-        $hook->add_html(navigation_renderer::render());
+        $hook->add_html(navigation_output::render());
     }
 }
