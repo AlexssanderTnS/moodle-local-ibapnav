@@ -7,22 +7,64 @@ defined('MOODLE_INTERNAL') || die();
  * IBAP navigation block.
  */
 class block_ibapnav extends block_base {
+    /**
+     * Initialise the block.
+     *
+     * @return void
+     */
     public function init(): void {
         $this->title = get_string('pluginname', 'block_ibapnav');
     }
 
+    /**
+     * Define where the block can be added.
+     *
+     * @return array
+     */
     public function applicable_formats(): array {
         return [
             'course' => true,
             'course-category' => false,
             'site' => false,
+            'my' => false,
         ];
     }
 
+    /**
+     * The block has global settings.
+     *
+     * @return bool
+     */
     public function has_config(): bool {
         return true;
     }
 
+    /**
+     * Only one activation block is needed per course page.
+     *
+     * @return bool
+     */
+    public function instance_allow_multiple(): bool {
+        return false;
+    }
+
+    /**
+     * Allow course-specific settings even though multiple instances are off.
+     *
+     * @return bool
+     */
+    public function instance_allow_config(): bool {
+        return true;
+    }
+
+    /**
+     * Render the small administrator status block.
+     *
+     * Students do not need to see this block; the navigation pill itself is
+     * injected independently through the output hook.
+     *
+     * @return stdClass|null
+     */
     public function get_content() {
         if (!has_capability('moodle/course:manageactivities', $this->context)) {
             return null;
@@ -42,88 +84,77 @@ class block_ibapnav extends block_base {
         return $this->content;
     }
 
+    /**
+     * Enable navigation when the block is added to a course.
+     *
+     * @return bool
+     */
     public function instance_create() {
-        global $DB;
-
         $coursecontext = $this->context->get_course_context(false);
         if (!$coursecontext) {
-            return;
+            return true;
         }
 
-        $courseid = (int)$coursecontext->instanceid;
-        $settings = $DB->get_record('block_ibapnav', ['course' => $courseid]);
-
-        if (!$settings) {
-            $DB->insert_record('block_ibapnav', (object)[
-                'course' => $courseid,
-                'enabled' => 1,
-                'showcourse' => 1,
-                'showactivityname' => 1,
-                'showfinish' => 1,
-                'hometext' => '',
-                'timecreated' => time(),
-                'timemodified' => time(),
-            ]);
-            return;
-        }
-
-        $settings->enabled = 1;
-        $settings->timemodified = time();
-        $DB->update_record('block_ibapnav', $settings);
+        \block_ibapnav\local\settings_repository::enable_course((int) $coursecontext->instanceid);
+        return true;
     }
 
+    /**
+     * Save both normal block configdata and the course-level navigation copy.
+     *
+     * @param stdClass $data Submitted configuration.
+     * @param bool $nolongerused Legacy parameter.
+     * @return bool
+     */
     public function instance_config_save($data, $nolongerused = false) {
-        global $DB;
-
         $result = parent::instance_config_save($data, $nolongerused);
+        if (!$result) {
+            return false;
+        }
 
         $coursecontext = $this->context->get_course_context(false);
         if (!$coursecontext) {
-            return $result;
+            return true;
         }
 
-        $courseid = (int)$coursecontext->instanceid;
-        $settings = $DB->get_record('block_ibapnav', ['course' => $courseid]);
-        if (!$settings) {
-            return $result;
-        }
-
-        $value = static function($data, string $name, $default = null) {
+        $value = static function ($data, string $name, $default = null) {
             if (property_exists($data, $name)) {
                 return $data->{$name};
             }
+
             $configname = 'config_' . $name;
             if (property_exists($data, $configname)) {
                 return $data->{$configname};
             }
+
             return $default;
         };
 
-        $settings->showcourse = empty($value($data, 'showcourse', 0)) ? 0 : 1;
-        $settings->showactivityname = empty($value($data, 'showactivityname', 0)) ? 0 : 1;
-        $settings->showfinish = empty($value($data, 'showfinish', 0)) ? 0 : 1;
-        $settings->hometext = trim((string)$value($data, 'hometext', ''));
-        $settings->timemodified = time();
-        $DB->update_record('block_ibapnav', $settings);
+        \block_ibapnav\local\settings_repository::update_course(
+            (int) $coursecontext->instanceid,
+            [
+                'showcourse' => empty($value($data, 'showcourse', 0)) ? 0 : 1,
+                'showactivityname' => empty($value($data, 'showactivityname', 0)) ? 0 : 1,
+                'showfinish' => empty($value($data, 'showfinish', 0)) ? 0 : 1,
+                'hometext' => trim((string) $value($data, 'hometext', '')),
+            ]
+        );
 
-        return $result;
+        return true;
     }
 
+    /**
+     * Disable navigation when the activation block is removed.
+     *
+     * @return bool
+     */
     public function instance_delete() {
-        global $DB;
-
         $coursecontext = $this->context->get_course_context(false);
         if (!$coursecontext) {
-            return;
+            return true;
         }
 
-        $courseid = (int)$coursecontext->instanceid;
-        $settings = $DB->get_record('block_ibapnav', ['course' => $courseid]);
-
-        if ($settings && (int)$settings->enabled) {
-            $settings->enabled = 0;
-            $settings->timemodified = time();
-            $DB->update_record('block_ibapnav', $settings);
-        }
+        \block_ibapnav\local\settings_repository::disable_course((int) $coursecontext->instanceid);
+        return true;
     }
 }
